@@ -1,0 +1,90 @@
+#!/bin/sh
+help(){
+	cat << EOF
+$0 [-c] [-o outfile] <asmfile>
+	-c	- output a complete C program to test the shellcode
+	-o out	- write output to out, mainly useful with -c
+EOF
+}
+
+usage(){
+	echo "$0 [-ch] [-o outfile] <asmfile>"
+	exit 1
+}
+
+# tempfiles
+bin=/tmp/shell.bin
+obj=/tmp/shell.o
+
+# set default values
+mode=s
+
+# parse opts!
+while getopts "B:O:cho:" opt; do
+	case $opt in
+	B)
+		bin="$OPTARG"
+		;;
+	O)
+		obj="$OPTARG"
+		;;
+	c)
+		mode=c
+		;;
+	h)
+		help
+		exit 0
+		;;
+	o)
+		exec > $OPTARG
+		;;
+	*)
+		usage
+		;;
+	esac
+done
+
+shift $(( $OPTIND - 1 ))
+
+if [ -z "$1" ]; then
+	usage
+fi
+
+# generate shellcode, store in $bin
+as -o "$obj" "$1" && ld -o "$bin" "$obj" --oformat=binary -Ttext 0
+
+if [ ! -f "$bin" ]; then
+	echo "unable to create shellcode"
+	rm -f "$obj"
+	exit 2
+fi
+
+if [ "$mode" == "s" ]; then
+	xxd -i < $bin | tr '\n' ' ' | perl -pe 's/,?\s+0/\\/g'
+	echo
+else
+	cat << EOF
+#include <stdio.h>
+#include <string.h>
+
+const char shellcode[] = {
+EOF
+
+	xxd -i < "$bin"
+
+	cat << EOF
+};
+
+int
+main(int argc, char **argv)
+{
+	printf("Shellcode length: %d\n", strlen(shellcode));
+
+	((void(*)(void))shellcode)();
+
+	return 0;
+}
+EOF
+fi
+
+rm -f $bin $obj
