@@ -16,9 +16,6 @@ usage(){
 bin=/tmp/shell.bin
 obj=/tmp/shell.o
 
-# set default values
-mode=s
-
 # parse opts!
 while getopts "B:O:cho:" opt; do
 	case $opt in
@@ -59,10 +56,7 @@ if [ ! -f "$bin" ]; then
 	exit 2
 fi
 
-if [ "$mode" == "s" ]; then
-	xxd -i < $bin | tr '\n' ' ' | perl -pe 's/,?\s+0/\\/g'
-	echo
-else
+if [ "$mode" == "c" ]; then
 	cat << EOF
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +79,9 @@ main(int argc, char **argv)
 	return 0;
 }
 EOF
+else
+	xxd -i < $bin | tr '\n' ' ' | perl -pe 's/,?\s+0/\\/g'
+	echo
 fi
 
-rm -f $bin $obj
+rm -f "$bin" "$obj"
